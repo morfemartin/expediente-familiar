@@ -183,7 +183,7 @@ button:hover{background:transparent;color:var(--ink)}
 <div id="app" class="marco" hidden><div class="hoja" id="contenido"></div></div>
 <div id="visor" aria-modal="true" role="dialog"><div class="vtit" id="vtit"></div><div id="vwrap"><img id="vimg" alt=""><div id="vmk"></div></div><div class="vbar"><button id="vmenos">−</button><button id="vmas">+</button><button id="vajustar">Ajustar</button><a id="vdesc" download>Descargar</a><button id="vcerrar">Cerrar</button></div></div>
 <script>
-const P={"s":"AgoqVQmKuMnifKAFJyQ4Lw==","i":"TcZzOsTKMxkJ2iZx","n":600000,"f":"f/expediente-a27a679d1bb9ad935576042c63321234.bin"};
+const P={"s":"AgoqVQmKuMnifKAFJyQ4Lw==","i":"hVKYRjpZrNunZLRr","n":600000,"f":"f/expediente-074e4b2d79d4dd26ec2e4d927e1f5f09.bin"};
 const b64=(s)=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 let KEY=null,IMG={};
 async function derivar(clave){const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(clave),"PBKDF2",false,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt:b64(P.s),iterations:P.n,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["decrypt"]);}
