@@ -1,0 +1,15 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.clave
+.registro_url
+*.pem
+*.key
+*.p12
+*.crt
+*.cer
+*.log
+fuentes/
+datos.local.mjs
+/source/dist/
