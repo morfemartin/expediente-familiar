@@ -27,6 +27,12 @@ input{font:inherit;font-size:20px;padding:10px 0;border:0;border-bottom:1.5px so
 input:focus{border-bottom-width:2.5px}
 button{justify-self:start;margin-top:8px;font-family:var(--sans);text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:600;padding:13px 26px;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer}
 button:hover{background:transparent;color:var(--ink)}
+.campo-clave{display:grid;gap:6px}
+.control-clave{display:grid;grid-template-columns:minmax(0,1fr) auto}
+.control-clave input{width:100%;min-width:0}
+.control-clave button{align-self:stretch;min-width:78px;min-height:44px;margin:0;padding:0 0 0 10px;border:0;border-bottom:1.5px solid var(--ink);background:transparent;color:var(--ink);font-size:11px;letter-spacing:.08em;text-align:right}
+.control-clave button:hover{text-decoration:underline;text-underline-offset:3px}
+.control-clave button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 #err{min-height:22px;font-family:var(--sans);font-size:13px;color:var(--red)}
 .franja span{background:var(--paper);padding:3px 6px;margin:-3px -6px}
 .franja{position:relative;z-index:1;margin-top:auto;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:18px clamp(28px,6vw,80px);font-family:var(--sans);text-transform:uppercase;letter-spacing:.12em;font-size:10.5px}
@@ -128,7 +134,13 @@ button:hover{background:transparent;color:var(--ink)}
     <h1>Línea<em>Carballo</em><small>Nacionalidad española</small></h1>
     <form id="f" autocomplete="off">
       <label><span class="caps">Tu nombre</span><input id="nom" required maxlength="80" autocomplete="name"></label>
-      <label><span class="caps">Clave</span><input id="k" type="password" required></label>
+      <div class="campo-clave">
+        <label class="caps" for="k">Clave</label>
+        <div class="control-clave">
+          <input id="k" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+          <button id="ver-clave" type="button" aria-controls="k" aria-label="Mostrar clave">Mostrar</button>
+        </div>
+      </div>
       <button type="submit">Entrar</button>
       <div id="err" role="alert"></div>
     </form>
@@ -161,8 +173,16 @@ function mostrar(d,nombre){
   const io=new IntersectionObserver((es)=>es.forEach(async e=>{if(!e.isIntersecting)return;io.unobserve(e.target);const fig=e.target;try{const u=await imagen(fig.dataset.img);const ph=fig.querySelector(".ph");ph.innerHTML='<img alt="" src="'+u+'">';const im=ph.firstChild;im.onload=()=>{ph.style.aspectRatio=im.naturalWidth+"/"+im.naturalHeight;ph.insertAdjacentHTML("beforeend",marcasHtml(fig))};}catch(_){fig.querySelector(".ph span").textContent="No se pudo cargar";}}),{rootMargin:"600px"});
   document.querySelectorAll(".fig[data-img]").forEach(f=>{io.observe(f);const go=()=>visor(f);f.addEventListener("click",go);f.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}})});
 }
+const campoClave=document.getElementById("k");
+const verClave=document.getElementById("ver-clave");
+verClave.addEventListener("click",()=>{
+  const mostrarClave=campoClave.type==="password";
+  campoClave.type=mostrarClave?"text":"password";
+  verClave.textContent=mostrarClave?"Ocultar":"Mostrar";
+  verClave.setAttribute("aria-label",mostrarClave?"Ocultar clave":"Mostrar clave");
+});
 document.getElementById("f").addEventListener("submit",async(e)=>{
-  e.preventDefault();const nombre=document.getElementById("nom").value.trim();const k=document.getElementById("k").value.trim();const err=document.getElementById("err");
+  e.preventDefault();const nombre=document.getElementById("nom").value.trim();const k=campoClave.value.trim();const err=document.getElementById("err");
   if(!nombre){err.textContent="Escribe tu nombre.";return}
   err.textContent="Abriendo…";
   try{const d=await abrir(k);try{sessionStorage.setItem("k",k);sessionStorage.setItem("n",nombre)}catch(_){}registrar(nombre,d.registro);mostrar(d,nombre);}
