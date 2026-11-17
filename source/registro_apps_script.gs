@@ -1,34 +1,34 @@
-// Receptor opcional de visitas. Configura el destino en las propiedades del script.
+// Optional visit logger. Set the destination in the script properties.
 
-function textoParaCelda(valor, maximo) {
-  const texto = typeof valor === "string" ? valor.trim().slice(0, maximo) : "";
-  return /^[=+@-]/.test(texto) ? "'" + texto : texto;
+function cellText(value, limit) {
+  const text = typeof value === "string" ? value.trim().slice(0, limit) : "";
+  return /^[=+@-]/.test(text) ? "'" + text : text;
 }
 
-function doPost(e) {
-  let datos;
+function doPost(event) {
+  let data;
   try {
-    datos = JSON.parse(e.postData.contents);
+    data = JSON.parse(event.postData.contents);
   } catch (_) {
-    return ContentService.createTextOutput("datos inválidos");
+    return ContentService.createTextOutput("invalid data");
   }
 
-  const nombre = textoParaCelda(datos && datos.nombre, 80);
-  if (!nombre) return ContentService.createTextOutput("sin nombre");
+  const name = cellText(data && data.nombre, 80);
+  if (!name) return ContentService.createTextOutput("missing name");
 
-  const propiedades = PropertiesService.getScriptProperties();
-  const libro = propiedades.getProperty("SPREADSHEET_ID");
-  const pestaña = propiedades.getProperty("SHEET_ID");
-  if (!libro || !pestaña) throw new Error("Configura SPREADSHEET_ID y SHEET_ID");
-  const hoja = SpreadsheetApp.openById(libro).getSheetById(Number(pestaña));
-  if (!hoja) throw new Error("No se encontró la pestaña de registro");
+  const properties = PropertiesService.getScriptProperties();
+  const spreadsheetId = properties.getProperty("SPREADSHEET_ID");
+  const sheetId = properties.getProperty("SHEET_ID");
+  if (!spreadsheetId || !sheetId) throw new Error("Set SPREADSHEET_ID and SHEET_ID");
+  const sheet = SpreadsheetApp.openById(spreadsheetId).getSheetById(Number(sheetId));
+  if (!sheet) throw new Error("Visit log sheet not found");
 
-  hoja.appendRow([
+  sheet.appendRow([
     new Date(),
-    nombre,
-    textoParaCelda(datos.navegador, 200),
-    textoParaCelda(datos.pantalla, 20),
-    textoParaCelda(datos.idioma, 20),
+    name,
+    cellText(data.navegador, 200),
+    cellText(data.pantalla, 20),
+    cellText(data.idioma, 20),
   ]);
   return ContentService.createTextOutput("ok");
 }

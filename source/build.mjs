@@ -1,8 +1,8 @@
-// Construye web/dist: página editorial con contenido e imágenes cifradas
-// (AES-256-GCM, clave derivada con PBKDF2-SHA256 600k). Sin dependencias.
-// Uso: node build.mjs                 (clave de .clave o nueva)
-//      CLAVE="nueva" node build.mjs   (cambia la clave)
-// Registro de visitas: la URL /exec del Apps Script va en .registro_url
+// Build the static archive with encrypted content and images.
+// AES-256-GCM with a PBKDF2-SHA-256 key derived over 600,000 iterations.
+// Run node build.mjs to reuse the password in .clave or generate one.
+// Use PASSWORD="new-password" node build.mjs to set a specific password.
+// Optional visit logging reads the Apps Script /exec URL from .registro_url.
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { randomBytes, webcrypto } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -14,8 +14,8 @@ const FOTOS = here + "src/img/";
 const subtle = webcrypto.subtle;
 const ITER = 600000;
 
-// ---------- clave ----------
-let clave = process.env.CLAVE;
+// ---------- password ----------
+let clave = process.env.PASSWORD || process.env.CLAVE;
 if (!clave && existsSync(here + ".clave")) clave = readFileSync(here + ".clave", "utf8").trim();
 if (!clave) {
   const abc = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -34,7 +34,7 @@ const cifrar = async (buf) => { const iv = randomBytes(12); const ct = Buffer.fr
 rmSync(here + "dist/f", { recursive: true, force: true });
 mkdirSync(here + "dist/f", { recursive: true });
 
-// ---------- imágenes cifradas ----------
+// ---------- encrypted images ----------
 const imagenes = {}; // id -> {f, i, n}
 let nImg = 0;
 async function registrarImg(ruta, nombreDescarga) {
@@ -45,7 +45,7 @@ async function registrarImg(ruta, nombreDescarga) {
   return id;
 }
 
-// ---------- texto ----------
+// ---------- text ----------
 const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 function resaltar(texto, frases = []) {
   let h = esc(texto);
@@ -53,21 +53,21 @@ function resaltar(texto, frases = []) {
   return h.split("\n\n").map((p) => `<p>${p}</p>`).join("");
 }
 const ETQ = {
-  literal: "Transcripción leída en la imagen",
-  auto: "Transcripción automática de FamilySearch, revisada · correcciones entre [ ]",
-  indice: "Índice de FamilySearch",
-  muestra: "Transcripción de demostración",
+  literal: "Transcribed from the original image",
+  auto: "Reviewed FamilySearch transcription · Corrections in square brackets",
+  indice: "FamilySearch index",
+  muestra: "Demo transcription",
 };
 const romanos = ["I", "II", "III", "IV"];
 
 async function figura(a) {
-  const lista = a.folio ? [{ ruta: FOLIOS + a.folio, label: a.marcas ? "Folio completo · resaltado" : "Folio completo", marcas: a.marcas }] : (a.imgs || []).map((im) => ({ ruta: FOTOS + im.file, label: im.label }));
-  if (!lista.length) return `<div class="fig vacia"><span>Sin imagen publicada</span><small>Contiene datos de personas vivas</small></div>`;
+  const lista = a.folio ? [{ ruta: FOLIOS + a.folio, label: a.marcas ? "Full folio · Highlighted" : "Full folio", marcas: a.marcas }] : (a.imgs || []).map((im) => ({ ruta: FOTOS + im.file, label: im.label }));
+  if (!lista.length) return `<div class="fig vacia"><span>Image withheld</span><small>Contains information about living people</small></div>`;
   let h = "";
   for (const [n, im] of lista.entries()) {
     const id = await registrarImg(im.ruta, `${a.id}_${n + 1}.jpg`);
     const mk = im.marcas ? ` data-marcas="${esc(JSON.stringify(im.marcas))}"` : "";
-    h += `<figure class="fig" data-img="${id}"${mk} tabindex="0" role="button" aria-label="Ampliar ${esc(a.titulo)} — ${esc(im.label)}"><div class="ph"><span>Descifrando…</span></div><figcaption><span>${esc(im.label)}</span><span class="zoom">Ampliar ↗</span></figcaption></figure>`;
+    h += `<figure class="fig" data-img="${id}"${mk} tabindex="0" role="button" aria-label="Enlarge ${esc(a.titulo)} — ${esc(im.label)}"><div class="ph"><span>Decrypting…</span></div><figcaption><span>${esc(im.label)}</span><span class="zoom">Enlarge ↗</span></figcaption></figure>`;
   }
   return `<div class="figs">${h}</div>`;
 }
@@ -81,9 +81,9 @@ async function articulo(a, { esNota = false } = {}) {
       ${a.gen ? `<p class="kicker">${esc(a.gen)}</p>` : ""}
       <h3>${esc(a.titulo)}</h3>
       <dl class="meta">
-        <div><dt>Fecha</dt><dd>${esc(a.fecha)}</dd></div>
-        <div><dt>Lugar</dt><dd>${esc(a.lugar)}</dd></div>
-        ${a.ref ? `<div><dt>Registro</dt><dd>${esc(a.ref)}</dd></div>` : ""}
+        <div><dt>Date</dt><dd>${esc(a.fecha)}</dd></div>
+        <div><dt>Place</dt><dd>${esc(a.lugar)}</dd></div>
+        ${a.ref ? `<div><dt>Record</dt><dd>${esc(a.ref)}</dd></div>` : ""}
       </dl>
       ${a.prueba ? `<p class="prueba">${esc(a.prueba)}</p>` : ""}
       ${a.nota ? `<p class="prueba">${esc(a.nota)}</p>` : ""}
@@ -93,7 +93,7 @@ async function articulo(a, { esNota = false } = {}) {
       <div class="tx">
         <p class="txh">${ETQ[a.estado] || ""}</p>
         <div class="txt${/^[…\[(.]/.test(a.texto) ? " sin" : ""}">${resaltar(a.texto, a.destacar)}</div>
-        ${a.fs ? `<a class="enlace" href="${a.fs}" target="_blank" rel="noopener">Ver en FamilySearch ↗</a>` : ""}
+        ${a.fs ? `<a class="enlace" href="${a.fs}" target="_blank" rel="noopener">View on FamilySearch ↗</a>` : ""}
       </div>
     </div>
   </div>
@@ -112,7 +112,7 @@ const notaHtml = await articulo(notaDocumental, { esNota: true });
 const { contacto } = sitio;
 const contactoHtml = contacto ? `
     <address class="pie-contacto">
-      <p class="caps pie-rotulo">Contacto</p>
+      <p class="caps pie-rotulo">Contact</p>
       <p class="pie-nombre">${esc(contacto.nombre)}</p>
       ${contacto.correo ? `<a href="mailto:${esc(contacto.correo)}">${esc(contacto.correo)}</a>` : ""}
       ${contacto.telefono ? `<a href="tel:${contacto.telefono.replace(/[^+0-9]/g, "")}">${esc(contacto.telefono)}</a>` : ""}
@@ -120,30 +120,30 @@ const contactoHtml = contacto ? `
 
 const contenido = `
 <header class="mast">
-  <div class="mast-top"><span>Expediente privado</span><span>${esc(sitio.referencia)}</span><span>Consultado por <b id="quien"></b></span></div>
+  <div class="mast-top"><span>Private archive</span><span>${esc(sitio.referencia)}</span><span>Opened by <b id="quien"></b></span></div>
   <div class="mast-logo"><img class="logo" src="carballo.webp" alt="Carballo" width="1500" height="531" decoding="async"></div>
   <p class="deck">${esc(sitio.descripcion)}</p>
-  <nav class="indice">${["La cadena", "Las actas", "Nota documental", "Pendientes"].map((t, i) => `<a href="#s${i + 1}"><i>${romanos[i]}</i>${t}</a>`).join("")}</nav>
+  <nav class="indice">${["Lineage", "Records", "Document note", "Research tasks"].map((t, i) => `<a href="#s${i + 1}"><i>${romanos[i]}</i>${t}</a>`).join("")}</nav>
 </header>
 
 <section id="s1" class="sec">
-  <h2><i>I</i>La cadena</h2>
+  <h2><i>I</i>Lineage</h2>
   <ol class="cadena">${cadena.map((c, i) => `<li><span class="g">${String(i + 1).padStart(2, "0")}</span><div><strong>${esc(c.n)}</strong><em>${esc(c.d)}</em></div></li>`).join("")}</ol>
 </section>
 
 <section id="s2" class="sec">
-  <h2><i>II</i>Las actas</h2>
-  <p class="leyenda"><mark>Resaltado</mark> = lo esencial de cada acta. Toca la imagen para ampliarla y descargarla.</p>
+  <h2><i>II</i>Records</h2>
+  <p class="leyenda"><mark>Highlights</mark> mark key passages. Select an image to zoom in or download it.</p>
   ${actasHtml}
 </section>
 
 <section id="s3" class="sec">
-  <h2><i>III</i>Nota documental</h2>
+  <h2><i>III</i>Document note</h2>
   ${notaHtml}
 </section>
 
 <section id="s4" class="sec">
-  <h2><i>IV</i>Pendientes</h2>
+  <h2><i>IV</i>Research tasks</h2>
   <ul class="pend">${pendientes.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
 </section>
 
@@ -152,21 +152,21 @@ const contenido = `
     ${contactoHtml}
     <div class="pie-creditos">
       <div class="pie-desarrollo">
-        <img class="pie-morfe" src="${morfe64}" alt="Logo de Morfe Estudio">
+        <img class="pie-morfe" src="${morfe64}" alt="Morfe Estudio logo">
         <div>
-          <p class="caps pie-rotulo">Desarrollado por Morfe Estudio</p>
+          <p class="caps pie-rotulo">Developed by Morfe Estudio</p>
           <p class="pie-autor">Martin Alejandro Morfe Carballo</p>
         </div>
       </div>
       <div class="pie-enlaces">
         <a href="https://morfe.studio/" target="_blank" rel="noopener noreferrer">morfe.studio <span aria-hidden="true">↗</span></a>
-        <a href="https://github.com/morfemartin/expediente-familiar" target="_blank" rel="noopener noreferrer">Repositorio en GitHub <span aria-hidden="true">↗</span></a>
+        <a href="https://github.com/morfemartin/expediente-familiar" target="_blank" rel="noopener noreferrer">GitHub repository <span aria-hidden="true">↗</span></a>
       </div>
     </div>
   </div>
   <div class="pie-ficha">
-    <span>Documento de trabajo, no oficial</span>
-    <span>Actualizado ${new Date().toISOString().slice(0, 10)}</span>
+    <span>Unofficial working document</span>
+    <span>Updated ${new Date().toISOString().slice(0, 10)}</span>
     <span>${esc(sitio.fuentes)}</span>
   </div>
   <img class="pie-carballo" src="carballo-claro.webp" alt="Carballo" width="1500" height="531" loading="lazy" decoding="async">
@@ -181,9 +181,9 @@ const payload = {
   f: `f/expediente-${salt.toString("hex")}.bin`,
 };
 
-// ---------- página ----------
+// ---------- page ----------
 const page = `<!doctype html>
-<html lang="es"><head>
+<html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><title>Carballo</title>
 <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
@@ -196,7 +196,7 @@ body{margin:0;font-variant-numeric:lining-nums;background:var(--ink);color:var(-
 .caps{font-family:var(--sans);text-transform:uppercase;letter-spacing:.12em;font-size:11px}
 mark{background:linear-gradient(transparent 12%,var(--marker) 12%,var(--marker) 88%,transparent 88%);color:inherit;padding:0 .08em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
 
-/* ---------- portada / acceso ---------- */
+/* ---------- cover and access ---------- */
 .marco{min-height:100vh;padding:clamp(14px,3.2vw,44px)}
 .hoja{position:relative;min-height:calc(100vh - 2*clamp(14px,3.2vw,44px));background:var(--paper);overflow:hidden;display:flex;flex-direction:column}
 #lock .firma{position:absolute;left:-6%;right:-14%;bottom:-6%;width:120%;height:auto;color:var(--ink);pointer-events:none}
@@ -222,7 +222,7 @@ button:hover{background:transparent;color:var(--ink)}
 .franja span{background:var(--paper);padding:3px 6px;margin:-3px -6px}
 .franja{position:relative;z-index:1;margin-top:auto;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:18px clamp(28px,6vw,80px);font-family:var(--sans);text-transform:uppercase;letter-spacing:.12em;font-size:10.5px}
 
-/* ---------- contenido ---------- */
+/* ---------- archive ---------- */
 #app .hoja{--margen-x:clamp(18px,6vw,96px);--margen-y:clamp(22px,5vw,72px);padding:var(--margen-y) var(--margen-x)}
 .mast-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-family:var(--sans);text-transform:uppercase;letter-spacing:.12em;font-size:10.5px;border-bottom:1px solid var(--rule);padding-bottom:12px}
 .mast-logo{display:flex;align-items:flex-end;justify-content:center;gap:clamp(10px,3vw,40px);margin:clamp(30px,6vw,70px) auto 10px;max-width:980px}
@@ -271,7 +271,7 @@ button:hover{background:transparent;color:var(--ink)}
 .enlace{display:inline-block;margin-top:6px;font-family:var(--sans);text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:var(--ink);border-bottom:1px solid var(--ink);text-decoration:none;padding-bottom:2px}
 .pend{margin:24px 0 0;padding-left:1.2em;font-size:21px}.pend li{margin:10px 0}
 
-/* ---------- pie del expediente ---------- */
+/* ---------- footer ---------- */
 .pie{
   --pie-regla:#5b554c;
   --pie-suave:#cdc5b8;
@@ -302,7 +302,7 @@ button:hover{background:transparent;color:var(--ink)}
 .pie-enlaces span{display:inline-block;margin-left:3px}
 .pie-ficha{grid-area:ficha;display:flex;justify-content:space-between;gap:8px 22px;flex-wrap:wrap;padding-top:16px;border-top:1px solid var(--pie-regla);color:var(--pie-suave);font-family:var(--sans);font-size:10px;letter-spacing:.055em}
 
-/* ---------- visor ---------- */
+/* ---------- viewer ---------- */
 #visor{position:fixed;inset:0;background:rgba(20,20,18,.97);z-index:50;display:none;touch-action:none}
 #visor.on{display:block}
 #vwrap{position:absolute;left:0;top:0;transform-origin:0 0}
@@ -336,27 +336,27 @@ button:hover{background:transparent;color:var(--ink)}
 <body>
 <div id="lock" class="marco"><div class="hoja">
   ${firma}
-  <img class="escudo-esq" src="escudo-portada.webp" alt="Escudo" width="83" height="145" decoding="async">
+  <img class="escudo-esq" src="escudo-portada.webp" alt="Carballo coat of arms" width="83" height="145" decoding="async">
   <div class="portada">
-    <p class="caps">Expediente privado</p>
-    <h1>Línea<em>Carballo</em><small>${esc(sitio.subtitulo)}</small></h1>
+    <p class="caps">Private archive</p>
+    <h1>Carballo<em>Lineage</em><small>${esc(sitio.subtitulo)}</small></h1>
     <form id="f" autocomplete="off">
-      <label><span class="caps">Tu nombre</span><input id="nom" required maxlength="80" autocomplete="name"></label>
+      <label><span class="caps">Your name</span><input id="nom" required maxlength="80" autocomplete="name"></label>
       <div class="campo-clave">
-        <label class="caps" for="k">Clave</label>
+        <label class="caps" for="k">Password</label>
         <div class="control-clave">
           <input id="k" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" required>
-          <button id="ver-clave" type="button" aria-controls="k" aria-label="Mostrar clave">Mostrar</button>
+          <button id="ver-clave" type="button" aria-controls="k" aria-label="Show password">Show</button>
         </div>
       </div>
-      <button type="submit">Entrar</button>
+      <button type="submit">Open archive</button>
       <div id="err" role="alert"></div>
     </form>
   </div>
-  <div class="franja"><span>Documento de trabajo</span><span>${REG ? "Acceso registrado" : esc(sitio.despedida)}</span><span>${esc(sitio.lugares)}</span></div>
+  <div class="franja"><span>Working document</span><span>${REG ? "Access logged" : esc(sitio.despedida)}</span><span>${esc(sitio.lugares)}</span></div>
 </div></div>
 <div id="app" class="marco" hidden><div class="hoja" id="contenido"></div></div>
-<div id="visor" aria-modal="true" role="dialog"><div class="vtit" id="vtit"></div><div id="vwrap"><img id="vimg" alt=""><div id="vmk"></div></div><div class="vbar"><button id="vmenos">−</button><button id="vmas">+</button><button id="vajustar">Ajustar</button><a id="vdesc" download>Descargar</a><button id="vcerrar">Cerrar</button></div></div>
+<div id="visor" aria-modal="true" role="dialog"><div class="vtit" id="vtit"></div><div id="vwrap"><img id="vimg" alt=""><div id="vmk"></div></div><div class="vbar"><button id="vmenos" aria-label="Zoom out">−</button><button id="vmas" aria-label="Zoom in">+</button><button id="vajustar">Fit to screen</button><a id="vdesc" download>Download</a><button id="vcerrar">Close</button></div></div>
 <script>
 const P=${JSON.stringify(payload)};
 const b64=(s)=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
@@ -366,7 +366,7 @@ let cargaExpediente;
 function cargarExpediente(){
   if(!cargaExpediente){
     cargaExpediente=fetch(P.f).then(respuesta=>{
-      if(!respuesta.ok)throw new Error("Error al descargar el expediente");
+      if(!respuesta.ok)throw new Error("Could not download the archive");
       return respuesta.arrayBuffer();
     }).catch(error=>{
       cargaExpediente=null;
@@ -396,7 +396,7 @@ function marcasHtml(fig){const m=fig.dataset.marcas?JSON.parse(fig.dataset.marca
 function mostrar(d,nombre){
   IMG=d.img;document.getElementById("contenido").innerHTML=d.html;document.getElementById("quien").textContent=nombre;
   document.getElementById("lock").remove();document.getElementById("app").hidden=false;window.scrollTo(0,0);
-  const io=new IntersectionObserver((es)=>es.forEach(async e=>{if(!e.isIntersecting)return;io.unobserve(e.target);const fig=e.target;try{const u=await imagen(fig.dataset.img);const ph=fig.querySelector(".ph");ph.innerHTML='<img alt="" src="'+u+'">';const im=ph.firstChild;im.onload=()=>{ph.style.aspectRatio=im.naturalWidth+"/"+im.naturalHeight;ph.insertAdjacentHTML("beforeend",marcasHtml(fig))};}catch(_){fig.querySelector(".ph span").textContent="No se pudo cargar";}}),{rootMargin:"600px"});
+  const io=new IntersectionObserver((es)=>es.forEach(async e=>{if(!e.isIntersecting)return;io.unobserve(e.target);const fig=e.target;try{const u=await imagen(fig.dataset.img);const ph=fig.querySelector(".ph");ph.innerHTML='<img alt="" src="'+u+'">';const im=ph.firstChild;im.onload=()=>{ph.style.aspectRatio=im.naturalWidth+"/"+im.naturalHeight;ph.insertAdjacentHTML("beforeend",marcasHtml(fig))};}catch(_){fig.querySelector(".ph span").textContent="Image could not load";}}),{rootMargin:"600px"});
   document.querySelectorAll(".fig[data-img]").forEach(f=>{io.observe(f);const go=()=>visor(f);f.addEventListener("click",go);f.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}})});
 }
 const campoClave=document.getElementById("k");
@@ -404,26 +404,26 @@ const verClave=document.getElementById("ver-clave");
 verClave.addEventListener("click",()=>{
   const mostrarClave=campoClave.type==="password";
   campoClave.type=mostrarClave?"text":"password";
-  verClave.textContent=mostrarClave?"Ocultar":"Mostrar";
-  verClave.setAttribute("aria-label",mostrarClave?"Ocultar clave":"Mostrar clave");
+  verClave.textContent=mostrarClave?"Hide":"Show";
+  verClave.setAttribute("aria-label",mostrarClave?"Hide password":"Show password");
 });
 const formulario=document.getElementById("f");
 formulario.addEventListener("focusin",()=>{cargarExpediente().catch(()=>{});},{once:true});
 formulario.addEventListener("submit",async(e)=>{
   e.preventDefault();const nombre=document.getElementById("nom").value.trim();const k=campoClave.value.trim();const err=document.getElementById("err");
-  if(!nombre){err.textContent="Escribe tu nombre.";return}
-  err.textContent="Abriendo…";
+  if(!nombre){err.textContent="Enter your name.";return}
+  err.textContent="Opening…";
   try{const d=await abrir(k);try{sessionStorage.setItem("k",k);sessionStorage.setItem("n",nombre)}catch(_){}registrar(nombre,d.registro);mostrar(d,nombre);}
-  catch(error){err.textContent=error.name==="OperationError"?"Clave incorrecta.":"No se pudo cargar el expediente. Intenta de nuevo.";}
+  catch(error){err.textContent=error.name==="OperationError"?"Incorrect password.":"The archive could not load. Try again.";}
 });
 (async()=>{let k=null,n=null;try{k=sessionStorage.getItem("k");n=sessionStorage.getItem("n")}catch(_){}if(k&&n){try{mostrar(await abrir(k),n)}catch(_){}}})();
 
-/* visor con zoom */
+/* image zoom and pan */
 const V=document.getElementById("visor"),VI=document.getElementById("vimg"),VW=document.getElementById("vwrap");let s=1,x=0,y=0,fit=1;
 function aplicar(){VW.style.transform="translate("+x+"px,"+y+"px) scale("+s+")"}
 function ajustar(){const w=innerWidth,h=innerHeight-70;fit=Math.min(w/VI.naturalWidth,h/VI.naturalHeight);s=fit;x=(w-VI.naturalWidth*s)/2;y=(h-VI.naturalHeight*s)/2;aplicar()}
 function zoom(f,cx=innerWidth/2,cy=innerHeight/2){const ns=Math.min(Math.max(s*f,fit*.5),fit*12);x=cx-(cx-x)*ns/s;y=cy-(cy-y)*ns/s;s=ns;aplicar()}
-async function visor(fig){const id=fig.dataset.img;const u=await imagen(id);VI.onload=()=>{VW.style.width=VI.naturalWidth+"px";VW.style.height=VI.naturalHeight+"px";ajustar()};VW.style.transform="scale(0)";document.getElementById("vmk").innerHTML=marcasHtml(fig);VI.src=u;document.getElementById("vdesc").href=u;document.getElementById("vdesc").download=IMG[id].n;document.getElementById("vtit").textContent=fig.getAttribute("aria-label").replace("Ampliar ","");V.classList.add("on");document.body.style.overflow="hidden";if(VI.complete&&VI.naturalWidth)ajustar();requestAnimationFrame(()=>{if(VI.naturalWidth)ajustar()})}
+async function visor(fig){const id=fig.dataset.img;const u=await imagen(id);VI.onload=()=>{VW.style.width=VI.naturalWidth+"px";VW.style.height=VI.naturalHeight+"px";ajustar()};VW.style.transform="scale(0)";document.getElementById("vmk").innerHTML=marcasHtml(fig);VI.src=u;document.getElementById("vdesc").href=u;document.getElementById("vdesc").download=IMG[id].n;document.getElementById("vtit").textContent=fig.getAttribute("aria-label").replace("Enlarge ","");V.classList.add("on");document.body.style.overflow="hidden";if(VI.complete&&VI.naturalWidth)ajustar();requestAnimationFrame(()=>{if(VI.naturalWidth)ajustar()})}
 function cerrar(){V.classList.remove("on");document.body.style.overflow=""}
 document.getElementById("vcerrar").onclick=cerrar;document.getElementById("vmas").onclick=()=>zoom(1.4);document.getElementById("vmenos").onclick=()=>zoom(1/1.4);document.getElementById("vajustar").onclick=ajustar;
 addEventListener("keydown",e=>{if(!V.classList.contains("on"))return;if(e.key==="Escape")cerrar();if(e.key==="+"||e.key==="=")zoom(1.4);if(e.key==="-")zoom(1/1.4)});
@@ -444,4 +444,4 @@ writeFileSync(here + "dist/" + payload.f, ct);
 for (const recurso of ["favicon.png", "escudo-portada.webp", "carballo.webp", "carballo-claro.webp"]) {
   writeFileSync(here + "dist/" + recurso, readFileSync(here + "src/marca/" + recurso));
 }
-console.log(`OK index.html ${(page.length / 1024).toFixed(0)} KB · ${nImg} imágenes cifradas · registro ${REG ? "activo" : "pendiente"}`);
+console.log(`OK index.html ${(page.length / 1024).toFixed(0)} KB · ${nImg} encrypted images · visit logging ${REG ? "enabled" : "off"}`);
