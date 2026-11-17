@@ -2,53 +2,53 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="source/src/marca/carballo-claro.webp">
-  <img src="source/src/marca/carballo.webp" width="420" alt="Escudo y firma Carballo">
+  <img src="source/src/marca/carballo.webp" width="420" alt="Carballo coat of arms and signature">
 </picture>
 
-Archivo web familiar con identidad visual propia. Reúne una línea genealógica, transcripciones y un visor de actas históricas para leer y cotejar los documentos desde el navegador.
+Carballo is a family history website that brings a genealogy, transcriptions, and historical records together in a browser-based document viewer.
 
-**Diseño y desarrollo por [Martin Alejandro Morfe Carballo](https://github.com/morfemartin) · [Morfe Estudio](https://morfe.studio/)**
+**Designed and developed by [Martin Alejandro Morfe Carballo](https://github.com/morfemartin) · [Morfe Estudio](https://morfe.studio/)**
 
-[Ver la edición publicada en GitHub Pages](https://morfemartin.github.io/expediente-familiar/) · [Probar la demo local](#probar-la-demo)
+[View the family edition on GitHub Pages](https://morfemartin.github.io/expediente-familiar/) · [Run the English demo](#run-the-english-demo)
 
-## De la firma al logotipo
+## From handwritten signature to visual identity
 
-La identidad parte de la firma de Carlos Carballo que aparece en el acta de defunción de Francisco Carballo, de 1886. En Adobe Illustrator amplié el trazo manuscrito y trabajé tres variantes vectoriales, la firma, el escudo y la composición que reúne ambos elementos.
+The identity began with Carlos Carballo's signature on Francisco Carballo's 1886 death record. In Adobe Illustrator, I examined the handwritten strokes at a larger scale and developed three vector assets: the signature, the coat of arms, and the combined mark.
 
-![Detalle de la firma manuscrita y las tres variantes en el panel de exportación de Illustrator](docs/illustrator/detalle-de-la-firma.jpg)
+![Close-up of the handwritten signature and the three variants in the Illustrator export panel](docs/illustrator/detalle-de-la-firma.jpg)
 
-![Comparación del folio con la composición final del escudo y la firma en Illustrator](docs/illustrator/firma-y-escudo.jpg)
+![The historical folio beside the finished signature and coat of arms in Illustrator](docs/illustrator/firma-y-escudo.jpg)
 
-La composición mantiene el color del escudo y adapta la firma a fondos claros y oscuros. El escudo también funciona como favicon. La web usa exportaciones WebP de la familia de marcas.
+The coat of arms retains its original colors. The signature has separate versions for light and dark backgrounds, and the coat of arms doubles as the favicon. The site serves the marks as WebP images.
 
-## Cómo funciona la web
+## How the site works
 
-- **Generación estática.** Node.js compila las fichas, sus transcripciones y los folios para publicar en GitHub Pages. El generador funciona sin dependencias de npm.
-- **Acceso y lectura.** El expediente se descifra en el navegador mediante Web Crypto, con AES-GCM de 256 bits y una clave derivada con PBKDF2-SHA-256. Los folios se descifran individualmente conforme se recorren y se pueden ampliar y descargar desde el visor.
-- **Registro de visitas.** La edición privada puede registrar el nombre declarado al abrir el expediente mediante una aplicación web de Apps Script y una hoja de Google Sheets. La URL de registro viaja dentro del expediente cifrado.
+- **Static generation.** A dependency-free Node.js generator builds the record pages, transcriptions, and encrypted folios for GitHub Pages.
+- **Access and reading.** The browser decrypts the archive with AES-256-GCM through Web Crypto. The encryption key is derived with PBKDF2-SHA-256. Individual folios load and decrypt as readers scroll and can be zoomed or downloaded in the viewer.
+- **Visit logging.** The private edition can record the name entered at sign-in using an Apps Script web app and a Google Sheet. The endpoint is stored in the encrypted archive.
 
-El documento inicial de la web publicada pasó de **680 kB a 10 kB transferidos**, y el tiempo hasta que el formulario estuvo listo pasó de **4,50 s a 0,26 s**. Son medianas de tres cargas en frío en Chrome con red móvil simulada. El cuerpo del expediente empieza a descargarse al enfocar el formulario.
+The published site's initial HTML transfer dropped from **680 kB to 10 kB**. Median time until the access form was ready dropped from **4.50 s to 0.26 s**, measured across three cold loads per version in Chrome on a simulated mobile connection. The encrypted archive starts downloading when the visitor moves focus to the form.
 
-## Probar la demo
+## Run the English demo
 
-![Folio ficticio abierto en el visor de Carballo](docs/visor-demo.jpg)
+![English sample folio open in the Carballo viewer](docs/visor-demo.jpg)
 
-La demo incluye un folio ficticio, una transcripción y una nota documental. Requiere Node.js 22 o posterior y Python 3 para servir los archivos en local.
+The demo includes a fictional folio, its transcription, and a document note. It requires Node.js 22 or later and Python 3 for the local server.
 
 ```sh
 git clone https://github.com/morfemartin/expediente-familiar.git
 cd expediente-familiar
-CLAVE=carballo-demo node source/build.mjs
+PASSWORD=carballo-demo node source/build.mjs
 python3 -m http.server 8765 --bind 127.0.0.1 --directory source/dist
 ```
 
-Abre [la demo en localhost](http://127.0.0.1:8765/), escribe un nombre de prueba y utiliza la clave `carballo-demo`.
+Open [the local demo](http://127.0.0.1:8765/), enter a sample name, and use the password `carballo-demo`.
 
-| Ruta | Contenido |
+| Path | Contents |
 | --- | --- |
-| [`source/build.mjs`](source/build.mjs) | Generador estático y aplicación del navegador |
-| [`source/src/datos.mjs`](source/src/datos.mjs) | Configuración y fichas de demostración |
-| [`source/registro_apps_script.gs`](source/registro_apps_script.gs) | Receptor opcional del registro en Google Sheets |
-| [`docs/illustrator/`](docs/illustrator/) | Capturas del proceso de diseño |
+| [`source/build.mjs`](source/build.mjs) | Static generator and browser application |
+| [`source/src/datos.mjs`](source/src/datos.mjs) | Demo configuration and sample records |
+| [`source/registro_apps_script.gs`](source/registro_apps_script.gs) | Optional Google Sheets visit logger |
+| [`docs/illustrator/`](docs/illustrator/) | Original screenshots of the design process |
 
-La demo se compila en `source/dist/`. La edición familiar se publica desde la raíz del repositorio con el contenido documental cifrado. Las claves y la configuración privada se mantienen en archivos locales.
+The demo builds to `source/dist/`. The family edition is served from the repository root with its documentary content encrypted. Passwords and private configuration are stored locally.
